@@ -2,127 +2,93 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Webcam Casting</title>
+  <title>Fullscreen Webcam Viewer</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #ffffff;
-      color: #000000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
+    body, html {
       margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: black;
     }
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-    }
-    video {
-      width: auto;
-      max-width: 80%;
-      height: auto;
-      margin-top: 1rem;
-      cursor: pointer;
-    }
-    .controls {
-      margin-top: 1rem;
+
+    #videoContainer {
       display: flex;
-      flex-direction: column;
+      justify-content: center;
       align-items: center;
-      gap: 0.5rem;
+      height: 100%;
     }
+
+    video {
+      width: 100vw;
+      height: 100vh;
+      object-fit: fill;
+    }
+
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+    }
+
     select, button {
-      padding: 0.5rem;
       font-size: 1rem;
+      margin-right: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>Select the uhhhhh the um the thing the capture card bro</h1>
-  <div class="controls">
-    <label for="webcamSelect">Select Webcam:</label>
-    <select id="webcamSelect"></select>
-
-    <label for="resolutionSelect">Resolution:</label>
-    <select id="resolutionSelect">
-      <option value="640x480">640x480</option>
-      <option value="1280x720">1280x720</option>
-      <option value="1920x1080">1920x1080</option>
-    </select>
-
-    <button onclick="toggleMirror('horizontal')">Mirror Horizontal</button>
-    <button onclick="toggleMirror('vertical')">Mirror Vertical</button>
-    <button onclick="toggleFullscreen()">Fullscreen</button>
+  <div id="controls">
+    <select id="cameraSelect"></select>
+    <button onclick="startWebcam()">Start</button>
   </div>
 
-  <video id="video" autoplay playsinline></video>
+  <div id="videoContainer">
+    <video id="webcam" autoplay playsinline></video>
+  </div>
 
   <script>
-    const video = document.getElementById('video');
-    const webcamSelect = document.getElementById('webcamSelect');
-    const resolutionSelect = document.getElementById('resolutionSelect');
+    const video = document.getElementById('webcam');
+    const select = document.getElementById('cameraSelect');
 
-    let currentStream;
-
-    async function getWebcams() {
+    async function getCameras() {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      webcamSelect.innerHTML = '';
+      select.innerHTML = '';
       videoDevices.forEach(device => {
         const option = document.createElement('option');
         option.value = device.deviceId;
-        option.text = device.label || `Camera ${webcamSelect.length + 1}`;
-        webcamSelect.appendChild(option);
+        option.text = device.label || `Camera ${select.length + 1}`;
+        select.appendChild(option);
       });
     }
 
-    async function startStream() {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
-
-      const [width, height] = resolutionSelect.value.split('x').map(Number);
+    async function startWebcam() {
       const constraints = {
         video: {
-          deviceId: { exact: webcamSelect.value },
-          width: { exact: width },
-          height: { exact: height }
+          deviceId: { exact: select.value }
         }
       };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+      await video.play();
+      requestFullscreen();
+    }
 
-      try {
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = currentStream;
-      } catch (err) {
-        console.error('Error accessing webcam:', err);
+    function requestFullscreen() {
+      const container = document.documentElement;
+      if (container.requestFullscreen) {
+        container.requestFullscreen();
+      } else if (container.webkitRequestFullscreen) {
+        container.webkitRequestFullscreen();
+      } else if (container.msRequestFullscreen) {
+        container.msRequestFullscreen();
       }
     }
 
-    function toggleMirror(direction) {
-      if (direction === 'horizontal') {
-        video.style.transform = video.style.transform.includes('scaleX(-1)') ? '' : 'scaleX(-1)';
-      } else if (direction === 'vertical') {
-        video.style.transform = video.style.transform.includes('scaleY(-1)') ? '' : 'scaleY(-1)';
-      }
-    }
-
-    function toggleFullscreen() {
-      if (video.requestFullscreen) {
-        video.requestFullscreen();
-      } else if (video.webkitRequestFullscreen) {
-        video.webkitRequestFullscreen();
-      } else if (video.msRequestFullscreen) {
-        video.msRequestFullscreen();
-      }
-    }
-
-    webcamSelect.addEventListener('change', startStream);
-    resolutionSelect.addEventListener('change', startStream);
-
-    getWebcams().then(startStream);
+    // Initialize
+    getCameras();
   </script>
 </body>
 </html>
