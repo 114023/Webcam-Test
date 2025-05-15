@@ -51,29 +51,51 @@
   <script>
     const video = document.getElementById('webcam');
     const select = document.getElementById('cameraSelect');
+    let initialStream;
 
-    async function getCameras() {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      select.innerHTML = '';
-      videoDevices.forEach(device => {
-        const option = document.createElement('option');
-        option.value = device.deviceId;
-        option.text = device.label || `Camera ${select.length + 1}`;
-        select.appendChild(option);
-      });
+    async function requestPermissionsAndListCameras() {
+      try {
+        // Ask for camera permission to access labels
+        initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = initialStream; // optional preview while selecting
+        await video.play();
+
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        select.innerHTML = '';
+        videoDevices.forEach(device => {
+          const option = document.createElement('option');
+          option.value = device.deviceId;
+          option.text = device.label || `Camera ${select.length + 1}`;
+          select.appendChild(option);
+        });
+      } catch (err) {
+        alert('Camera access is required to use this app.');
+        console.error(err);
+      }
     }
 
     async function startWebcam() {
+      if (initialStream) {
+        // Stop the initial permission stream
+        initialStream.getTracks().forEach(track => track.stop());
+      }
+
       const constraints = {
         video: {
           deviceId: { exact: select.value }
         }
       };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      video.srcObject = stream;
-      await video.play();
-      requestFullscreen();
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+        await video.play();
+        requestFullscreen();
+      } catch (err) {
+        alert('Failed to access the selected camera.');
+        console.error(err);
+      }
     }
 
     function requestFullscreen() {
@@ -87,8 +109,8 @@
       }
     }
 
-    // Initialize
-    getCameras();
+    // Ask for camera access on load
+    window.addEventListener('DOMContentLoaded', requestPermissionsAndListCameras);
   </script>
 </body>
 </html>
